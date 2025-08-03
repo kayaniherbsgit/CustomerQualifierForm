@@ -7,6 +7,8 @@ export default function Form() {
   const [leadId, setLeadId] = useState(null);
   const [message, setMessage] = useState("");
 
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -24,7 +26,7 @@ export default function Form() {
     setMessage("");
 
     try {
-const res = await axios.post(import.meta.env.VITE_API_URL + "/api/leads", formData);
+      const res = await axios.post(`${API_URL}/api/leads`, formData);
       setLeadId(res.data.lead._id);
       setSubmitted(true);
       setMessage("✅ Information sent successfully!");
@@ -38,10 +40,9 @@ const res = await axios.post(import.meta.env.VITE_API_URL + "/api/leads", formDa
 
   const handleDecision = async (choice) => {
     try {
-await axios.patch(`${import.meta.env.VITE_API_URL}/api/leads/${leadId}`, {
-  readyToPay: choice === "yes",
-});
-
+      await axios.patch(`${API_URL}/api/leads/${leadId}`, {
+        readyToPay: choice === "yes",
+      });
 
       if (choice === "yes") {
         window.open("https://wa.me/255655889126?text=Nipo%20tayari%20kulipia%20tiba", "_blank");
@@ -60,9 +61,9 @@ await axios.patch(`${import.meta.env.VITE_API_URL}/api/leads/${leadId}`, {
           <form onSubmit={handleSubmit} style={styles.form}>
             <h2 style={styles.title}>🌿 Order Now</h2>
 
-            <input type="text" name="name" placeholder="Full Name" onChange={handleChange} required style={styles.input}/>
-            <input type="text" name="phone" placeholder="Phone Number" onChange={handleChange} required style={styles.input}/>
-            <input type="number" name="age" placeholder="Age" onChange={handleChange} required style={styles.input}/>
+            <input type="text" name="name" placeholder="Full Name" onChange={handleChange} required style={styles.input} />
+            <input type="text" name="phone" placeholder="Phone Number" onChange={handleChange} required style={styles.input} />
+            <input type="number" name="age" placeholder="Age" onChange={handleChange} required style={styles.input} />
             <textarea name="problem" placeholder="Describe Your Problem" onChange={handleChange} required style={styles.textarea} />
 
             <button type="submit" disabled={loading} style={styles.button}>

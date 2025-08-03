@@ -6,28 +6,44 @@ export default function Admin() {
   const [filteredLeads, setFilteredLeads] = useState([]);
   const [filter, setFilter] = useState("all");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // ✅ watch for resize
+  // ✅ Watch for screen resize (to toggle mobile view)
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ✅ Fetch leads from backend
   useEffect(() => {
     async function fetchLeads() {
       try {
-        const res = await axios.get(import.meta.env.VITE_API_URL + "/api/leads")
-        setLeads(res.data);
-        setFilteredLeads(res.data);
+        setLoading(true);
+        setError("");
+
+        const res = await axios.get(import.meta.env.VITE_API_URL + "/api/leads");
+        console.log("✅ API Response:", res.data);
+
+        // ✅ Ensure leads is always an array
+        const leadsArray = Array.isArray(res.data)
+          ? res.data
+          : res.data.leads || [];
+
+        setLeads(leadsArray);
+        setFilteredLeads(leadsArray);
       } catch (err) {
         console.error("❌ Error fetching leads:", err);
+        setError("❌ Could not load leads. Please try again.");
+      } finally {
+        setLoading(false);
       }
     }
     fetchLeads();
   }, []);
 
-  // ✅ Filter logic
+  // ✅ Filter leads whenever filter changes
   useEffect(() => {
     if (filter === "all") {
       setFilteredLeads(leads);
@@ -40,12 +56,13 @@ export default function Admin() {
     }
   }, [filter, leads]);
 
+  // ✅ Status Badge Styling
   const getStatusBadge = (status) => {
     if (status === true)
-      return <span style={styles.statusYes}>Yes</span>;
+      return <span style={styles.statusYes}>✅ Yes</span>;
     if (status === false)
-      return <span style={styles.statusNo}>No</span>;
-    return <span style={styles.statusPending}>Pending</span>;
+      return <span style={styles.statusNo}>❌ No</span>;
+    return <span style={styles.statusPending}>⏳ Pending</span>;
   };
 
   return (
@@ -62,7 +79,7 @@ export default function Admin() {
         </aside>
       )}
 
-      {/* ✅ MAIN DASHBOARD AREA */}
+      {/* ✅ MAIN DASHBOARD */}
       <main style={{ ...styles.main, width: isMobile ? "100%" : "auto" }}>
         {/* ✅ MOBILE TOP BAR */}
         {isMobile && (
@@ -87,9 +104,9 @@ export default function Admin() {
         >
           {[
             { key: "all", label: "All", color: "#048547" },
-            { key: "yes", label: "Yes", color: "green" },
-            { key: "no", label: "No", color: "crimson" },
-            { key: "pending", label: "Pending", color: "gray" },
+            { key: "yes", label: "✅ YES", color: "green" },
+            { key: "no", label: "❌ NO", color: "crimson" },
+            { key: "pending", label: "⏳ Pending", color: "gray" },
           ].map((btn) => (
             <button
               key={btn.key}
@@ -106,40 +123,46 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* ✅ TABLE (scrollable on mobile) */}
+        {/* ✅ TABLE OR MESSAGES */}
         <div style={styles.tableWrapper}>
-          <div style={styles.tableContainer}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Name</th>
-                  <th style={styles.th}>Phone</th>
-                  <th style={styles.th}>Age</th>
-                  <th style={styles.th}>Problem</th>
-                  <th style={styles.th}>Ready to Pay</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.isArray(filteredLeads) && filteredLeads.length > 0 ? (
-                  filteredLeads.map((lead) => (
-                    <tr key={lead._id} style={styles.row}>
-                      <td style={styles.td}>{lead.name}</td>
-                      <td style={styles.td}>{lead.phone}</td>
-                      <td style={styles.td}>{lead.age}</td>
-                      <td style={styles.td}>{lead.problem}</td>
-                      <td style={styles.td}>{getStatusBadge(lead.readyToPay)}</td>
-                    </tr>
-                  ))
-                ) : (
+          {loading ? (
+            <p style={styles.loading}>⏳ Loading leads...</p>
+          ) : error ? (
+            <p style={styles.error}>{error}</p>
+          ) : (
+            <div style={styles.tableContainer}>
+              <table style={styles.table}>
+                <thead>
                   <tr>
-                    <td colSpan="5" style={styles.noLeads}>
-                      🚫 No leads found
-                    </td>
+                    <th style={styles.th}>Name</th>
+                    <th style={styles.th}>Phone</th>
+                    <th style={styles.th}>Age</th>
+                    <th style={styles.th}>Problem</th>
+                    <th style={styles.th}>Ready to Pay</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {Array.isArray(filteredLeads) && filteredLeads.length > 0 ? (
+                    filteredLeads.map((lead) => (
+                      <tr key={lead._id} style={styles.row}>
+                        <td style={styles.td}>{lead.name}</td>
+                        <td style={styles.td}>{lead.phone}</td>
+                        <td style={styles.td}>{lead.age}</td>
+                        <td style={styles.td}>{lead.problem}</td>
+                        <td style={styles.td}>{getStatusBadge(lead.readyToPay)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" style={styles.noLeads}>
+                        🚫 No leads found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -153,7 +176,6 @@ const styles = {
     fontFamily: "Arial, sans-serif",
     background: "#f9fafb",
   },
-  /* ✅ Sidebar */
   sidebar: {
     width: "240px",
     background: "#ffffff",
@@ -171,7 +193,6 @@ const styles = {
   navItem: { padding: "10px 0", color: "#555" },
   navActive: { fontWeight: "bold", color: "#048547" },
 
-  /* ✅ Mobile Top Bar */
   mobileTopBar: {
     background: "#fff",
     padding: "15px",
@@ -181,14 +202,12 @@ const styles = {
     marginBottom: "15px",
   },
 
-  /* ✅ Main */
   main: { flex: 1, padding: "20px" },
 
   header: { marginBottom: "15px" },
   title: { fontSize: "1.6em", fontWeight: "bold", marginBottom: "5px" },
   subtitle: { color: "#777", fontSize: "0.95em" },
 
-  /* ✅ Filters */
   filterBar: {
     display: "flex",
     gap: "10px",
@@ -202,7 +221,6 @@ const styles = {
     cursor: "pointer",
   },
 
-  /* ✅ Table */
   tableWrapper: {
     background: "#fff",
     borderRadius: "10px",
@@ -210,13 +228,13 @@ const styles = {
     padding: "10px",
   },
   tableContainer: {
-    overflowX: "auto", // ✅ scrolls horizontally on mobile
+    overflowX: "auto",
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: "0.95em",
-    minWidth: "600px", // ✅ ensures scroll on small screens
+    minWidth: "600px",
   },
   th: {
     textAlign: "left",
@@ -231,7 +249,9 @@ const styles = {
   row: { transition: "background 0.2s ease" },
   noLeads: { textAlign: "center", padding: "20px", color: "#aaa" },
 
-  /* ✅ Status Badges */
+  loading: { textAlign: "center", padding: "20px", fontWeight: "bold", color: "#555" },
+  error: { textAlign: "center", padding: "20px", color: "crimson", fontWeight: "bold" },
+
   statusYes: {
     background: "#e6f7e9",
     color: "green",
