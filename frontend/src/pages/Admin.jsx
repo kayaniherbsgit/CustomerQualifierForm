@@ -17,7 +17,7 @@ export default function Admin() {
   useEffect(() => {
     async function fetchLeads() {
       try {
-        const res = await axios.get("http://localhost:5000/api/leads");
+        const res = await axios.get(import.meta.env.VITE_API_URL + "/api/leads")
         setLeads(res.data);
         setFilteredLeads(res.data);
       } catch (err) {

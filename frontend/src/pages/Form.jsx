@@ -24,7 +24,7 @@ export default function Form() {
     setMessage("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/leads", formData);
+const res = await axios.post(import.meta.env.VITE_API_URL + "/api/leads", formData);
       setLeadId(res.data.lead._id);
       setSubmitted(true);
       setMessage("✅ Information sent successfully!");
@@ -38,9 +38,10 @@ export default function Form() {
 
   const handleDecision = async (choice) => {
     try {
-      await axios.patch(`http://localhost:5000/api/leads/${leadId}`, {
-        readyToPay: choice === "yes",
-      });
+await axios.patch(`${import.meta.env.VITE_API_URL}/api/leads/${leadId}`, {
+  readyToPay: choice === "yes",
+});
+
 
       if (choice === "yes") {
         window.open("https://wa.me/255655889126?text=Nipo%20tayari%20kulipia%20tiba", "_blank");

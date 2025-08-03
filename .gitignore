@@ -1,0 +1,34 @@
+# Node modules
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+
+# Build outputs
+dist/
+build/
+
+# Vite cache
+.vite/
+
+# VS Code & IDE junk
+.vscode/
+.idea/
+
+# Mac & Windows junk files
+.DS_Store
+Thumbs.db
+
+# Local server files
+*.local
+
+# Coverage reports
+coverage/
+
+# Optional: backup files
+*.bak
