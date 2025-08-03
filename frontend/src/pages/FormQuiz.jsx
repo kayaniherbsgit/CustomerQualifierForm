@@ -1,16 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 
 export default function FormQuiz() {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [step, setStep] = useState(0);
   const [leadId, setLeadId] = useState(null);
+  const [userMessages, setUserMessages] = useState([]); // ✅ stores answers as chat bubbles
 
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     age: "",
     problem: "",
+    duration: "",
+    medications: "",
+    feelings: "",
+    location: "",
     willingToPay: "",
     customOffer: "",
   });
@@ -19,22 +24,30 @@ export default function FormQuiz() {
   const [submitted, setSubmitted] = useState(false);
   const [typing, setTyping] = useState(false);
   const [payStep, setPayStep] = useState(false);
+  const [idle, setIdle] = useState(false);
 
-  // ✅ Fake typing delay for realism
+  // ✅ Auto-reminder if user goes idle for 15 seconds
+  useEffect(() => {
+    if (!submitted) {
+      const timer = setTimeout(() => setIdle(true), 15000);
+      return () => clearTimeout(timer);
+    }
+  }, [step, formData, submitted]);
+
   const showTypingThenNext = (nextStep) => {
     setTyping(true);
     setTimeout(() => {
       setTyping(false);
       setStep(nextStep);
+      setIdle(false);
     }, 800);
   };
 
-  // ✅ Handles input
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ Save progress instantly after each step
+  // ✅ Save instantly to DB after each step
   const saveProgress = async (updatedData) => {
     try {
       if (!leadId) {
@@ -50,7 +63,22 @@ export default function FormQuiz() {
 
   const handleNext = async (field) => {
     await saveProgress({ [field]: formData[field] });
+
+    // ✅ show user response in a bubble
+    if (formData[field]) {
+      setUserMessages((prev) => [
+        ...prev,
+        { step, text: formData[field] },
+      ]);
+    }
+
     if (step === 4) {
+      // after problem → go to combined quiz about duration & medication
+      showTypingThenNext(5);
+    } else if (step === 6) {
+      // after emoji feelings → ask location
+      showTypingThenNext(7);
+    } else if (step === 7) {
       setPayStep(true);
     } else {
       showTypingThenNext(step + 1);
@@ -59,12 +87,13 @@ export default function FormQuiz() {
 
   const handleDecision = async (choice) => {
     await saveProgress({ willingToPay: choice });
+    setUserMessages((prev) => [...prev, { step: "payStep", text: choice === "yes" ? "✅ Ndiyo" : "❌ Hapana" }]);
     showTypingThenNext(choice === "yes" ? "priceConfirm" : "notReady");
   };
 
   const handlePriceDecision = async (choice) => {
+    setUserMessages((prev) => [...prev, { step: "priceConfirm", text: choice === "yes" ? "✅ Ndiyo" : "❌ Hapana" }]);
     if (choice === "yes") {
-      // ✅ Direct WhatsApp redirect if ready to pay
       window.open(
         "https://wa.me/255655889126?text=Nipo%20tayari%20kuanza%20Tiba%2C%20Nipigie%20simu%20sasa%20hivi",
         "_blank"
@@ -82,20 +111,20 @@ export default function FormQuiz() {
         {/* 🟢 Progress bar */}
         {!submitted && (
           <div style={styles.progressWrapper}>
-            <div style={{ ...styles.progressBar, width: `${(step / 6) * 100}%` }} />
+            <div style={{ ...styles.progressBar, width: `${(step / 9) * 100}%` }} />
           </div>
         )}
 
         {!submitted ? (
           <>
-            {/* Typing indicator */}
             {typing && <div style={styles.typingBubble}><span></span><span></span><span></span></div>}
+            {idle && !typing && <div style={styles.botBubble}>⏳ Dr. Kayani bado nipo hapa, twendelee?</div>}
 
             {/* 🌿 Intro */}
             {step === 0 && !typing && (
               <div style={styles.botBubble}>
                 👋 <b>Karibu Kayani Herbs!</b>  
-                Nawasaidia watu wenye changamoto ya <b>vidonda vya tumbo, acid nyingi tumboni, kiungulia kikali, gesi nyingi, vichomi, tumbo kujaa na hata usingizi kuvurugika usiku.</b>  
+                Nawasaidia watu wenye changamoto ya <b>vidonda vya tumbo, acid nyingi, kiungulia, gesi, vichomi, tumbo kujaa na hata usingizi kuvurugika usiku.</b>  
                 <br /><br />
                 Nitakuuliza maswali machache ili nikuelewe zaidi. 
                 <button style={styles.nextButton} onClick={() => showTypingThenNext(1)}>👉 Anza</button>
@@ -114,9 +143,7 @@ export default function FormQuiz() {
                   value={formData.name}
                   style={styles.input}
                 />
-                {formData.name && (
-                  <button style={styles.nextButton} onClick={() => handleNext("name")}>✅ Tayari</button>
-                )}
+                {formData.name && <button style={styles.nextButton} onClick={() => handleNext("name")}>✅ Tayari</button>}
               </div>
             )}
 
@@ -132,9 +159,7 @@ export default function FormQuiz() {
                   value={formData.phone}
                   style={styles.input}
                 />
-                {formData.phone && (
-                  <button style={styles.nextButton} onClick={() => handleNext("phone")}>✅ Tayari</button>
-                )}
+                {formData.phone && <button style={styles.nextButton} onClick={() => handleNext("phone")}>✅ Tayari</button>}
               </div>
             )}
 
@@ -150,9 +175,7 @@ export default function FormQuiz() {
                   value={formData.age}
                   style={styles.input}
                 />
-                {formData.age && (
-                  <button style={styles.nextButton} onClick={() => handleNext("age")}>✅ Tayari</button>
-                )}
+                {formData.age && <button style={styles.nextButton} onClick={() => handleNext("age")}>✅ Tayari</button>}
               </div>
             )}
 
@@ -167,67 +190,85 @@ export default function FormQuiz() {
                   value={formData.problem}
                   style={styles.textarea}
                 />
-                {formData.problem && (
-                  <button style={styles.nextButton} onClick={() => handleNext("problem")}>✅ Tayari</button>
+                {formData.problem && <button style={styles.nextButton} onClick={() => handleNext("problem")}>✅ Tayari</button>}
+              </div>
+            )}
+
+            {/* 5️⃣ Duration & Medication (combined) */}
+            {step === 5 && !typing && (
+              <div style={styles.botBubble}>
+                🕒 Hali hii umekuwa nayo kwa muda gani? Na umewahi kutumia dawa yoyote kutatua hili tatizo? Ni ipi?
+                <input
+                  type="text"
+                  name="duration"
+                  placeholder="Mf: Miezi 6, miaka 2..."
+                  onChange={handleChange}
+                  value={formData.duration}
+                  style={styles.input}
+                />
+                <input
+                  type="text"
+                  name="medications"
+                  placeholder="Andika dawa ulizowahi kutumia..."
+                  onChange={handleChange}
+                  value={formData.medications}
+                  style={styles.input}
+                />
+                {formData.duration && formData.medications && (
+                  <button style={styles.nextButton} onClick={() => handleNext("medications")}>✅ Tayari</button>
                 )}
               </div>
             )}
 
-            {/* 5️⃣ Are you willing to invest? */}
+            {/* 7️⃣ Location */}
+            {step === 7 && !typing && (
+              <div style={styles.botBubble}>
+                📍 Je, upo mkoa gani kwa sasa? Ili nijue jinsi ya kukutumia dawa haraka.
+                <input
+                  type="text"
+                  name="location"
+                  placeholder="Andika mkoa wako..."
+                  onChange={handleChange}
+                  value={formData.location}
+                  style={styles.input}
+                />
+                {formData.location && <button style={styles.nextButton} onClick={() => handleNext("location")}>✅ Tayari</button>}
+              </div>
+            )}
+
+            {/* 8️⃣ Willing to pay */}
             {payStep && !typing && (
               <div style={styles.botBubble}>
                 💰 {formData.name}, je upo tayari kuwekeza pesa kutatua changamoto yako?
-                
-                {/* ✅ Show buttons only if user hasn't answered yet */}
                 {formData.willingToPay === "" && (
                   <div style={styles.buttonGroup}>
-                    <button 
-                      style={{ ...styles.decisionButton, background: "#0a7d36" }} 
+                    <button style={{ ...styles.decisionButton, background: "#0a7d36" }}
                       onClick={() => {
                         setFormData({ ...formData, willingToPay: "yes" });
                         handleDecision("yes");
-                      }}
-                    >
-                      ✅ Ndiyo
-                    </button>
-                    <button 
-                      style={{ ...styles.decisionButton, background: "crimson" }} 
-                      onClick={() => handleDecision("no")}
-                    >
-                      ❌ Hapana
-                    </button>
+                      }}>✅ Ndiyo</button>
+                    <button style={{ ...styles.decisionButton, background: "crimson" }}
+                      onClick={() => handleDecision("no")}>❌ Hapana</button>
                   </div>
                 )}
-
-                {/* ✅ If they clicked YES, show congrats message */}
                 {formData.willingToPay === "yes" && (
                   <p style={styles.successText}>
                     🎉 Hongera kwa kuchukua hatua ya kuanza tiba hii!  
-                    Wewe utakuwa miongoni mwa mamia waliotumia tiba hii na kupona kabisa ndani ya wiki 3 tu.  
+                    Wewe utakuwa miongoni mwa mamia waliotumia tiba hii na kupona kabisa ndani ya wiki 3 tu.
                   </p>
                 )}
               </div>
             )}
 
-            {/* 💵 Price Confirmation — show this immediately after YES */}
+            {/* 💵 Price confirm */}
             {step === "priceConfirm" && (
               <div style={styles.botBubble}>
                 🏷️ Tiba yetu ya <b>{formData.problem}</b> ni TZS 165,000.
                 <br />
                 Je, uko tayari kulipia kiasi hicho SASA HIVI ili kumjulisha Dr. Kayani akupigie simu?
                 <div style={styles.buttonGroup}>
-                  <button 
-                    style={{ ...styles.decisionButton, background: "#0a7d36" }} 
-                    onClick={() => handlePriceDecision("yes")}
-                  >
-                    ✅ Ndiyo
-                  </button>
-                  <button 
-                    style={{ ...styles.decisionButton, background: "crimson" }} 
-                    onClick={() => handlePriceDecision("no")}
-                  >
-                    ❌ Hapana
-                  </button>
+                  <button style={{ ...styles.decisionButton, background: "#0a7d36" }} onClick={() => handlePriceDecision("yes")}>✅ Ndiyo</button>
+                  <button style={{ ...styles.decisionButton, background: "crimson" }} onClick={() => handlePriceDecision("no")}>❌ Hapana</button>
                 </div>
               </div>
             )}
@@ -245,9 +286,7 @@ export default function FormQuiz() {
                   value={formData.customOffer}
                   style={styles.input}
                 />
-                {formData.customOffer && (
-                  <button style={styles.nextButton} onClick={() => setSubmitted(true)}>✅ Tuma</button>
-                )}
+                {formData.customOffer && <button style={styles.nextButton} onClick={() => setSubmitted(true)}>✅ Tuma</button>}
               </div>
             )}
           </>
@@ -257,6 +296,13 @@ export default function FormQuiz() {
             Taarifa zako zimepokelewa. Dr. Kayani atakupigia simu hivi karibuni. 📞
           </h2>
         )}
+
+        {/* ✅ User answer bubbles */}
+        <div style={styles.answerContainer}>
+          {userMessages.map((msg, i) => (
+            <div key={i} style={styles.userBubble}>{msg.text}</div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -289,6 +335,21 @@ const styles = {
     borderRadius: "15px",
     fontSize: "1.1em",
     animation: "fadeIn 0.4s ease",
+  },
+  userBubble: {
+    background: "#dcf8c6",
+    padding: "10px 14px",
+    borderRadius: "15px",
+    alignSelf: "flex-end",
+    maxWidth: "75%",
+    fontSize: "1em",
+    marginTop: "5px",
+    animation: "fadeIn 0.3s ease",
+  },
+  answerContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "5px",
   },
   typingBubble: {
     background: "#d9fdd3",
@@ -341,6 +402,12 @@ const styles = {
     display: "flex",
     gap: "10px",
   },
+  emojiBar: {
+    display: "flex",
+    gap: "15px",
+    marginTop: "10px",
+    justifyContent: "center",
+  },
   progressWrapper: {
     background: "#ddd",
     borderRadius: "20px",
@@ -353,8 +420,6 @@ const styles = {
     background: "#048547",
     transition: "width 0.3s ease",
   },
-
-  /* ✅ Fade-in green success message */
   successText: {
     marginTop: "10px",
     color: "#0a7d36",
