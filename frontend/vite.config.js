@@ -3,5 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: "/",   // ✅ important for Netlify routing
+  base: "/",
+  server: {
+    proxy: {
+      "/api": "http://localhost:5000"   // ✅ only for local dev
+    }
+  }
 });
