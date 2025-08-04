@@ -309,14 +309,20 @@ export default function FormQuiz() {
 }
 
 const styles = {
-  page: {
-    background: "#e5ddd5",
-    height: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "20px",
-  },
+page: {
+  backgroundImage: `url("/background.png")`,
+  backgroundSize: "cover",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "center",
+  backgroundAttachment: "fixed",
+  height: "100vh",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  padding: "20px",
+  backdropFilter: "brightness(0.95)", // subtle darken for readability
+},
+
   chatBox: {
     background: "#fff",
     padding: "20px",
